@@ -2,7 +2,7 @@
 <body>
 <?php
 
-include 'apiRedsys.php';
+include 'src/Redsys/Tpv/apiRedsys.php';
 
 // Se crea Objeto
 $miObj = new RedsysAPI;

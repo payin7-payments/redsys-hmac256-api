@@ -22,6 +22,8 @@
  * Redsys Servicios de Procesamiento, S.L., CIF B85955367
  */
 
+namespace Redsys\Tpv;
+
 class RedsysAPI
 {
     /******  Array de DatosEntrada ******/
