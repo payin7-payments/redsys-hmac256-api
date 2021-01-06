@@ -1,7 +1,7 @@
 <?php
 
 // Se incluye la librería
-include 'src/Redsys/Tpv/apiRedsys.php';
+include 'src/Redsys/Tpv/RedsysAPI.php';
 // Se crea Objeto
 $miObj = new RedsysAPI;
 
