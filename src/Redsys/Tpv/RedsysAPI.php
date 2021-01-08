@@ -1,290 +1,248 @@
 <?php
 
-/**
- * NOTA SOBRE LA LICENCIA DE USO DEL SOFTWARE
- *
- * El uso de este software está sujeto a las Condiciones de uso de software que
- * se incluyen en el paquete en el documento "Aviso Legal.pdf". También puede
- * obtener una copia en la siguiente url:
- * http://www.redsys.es/wps/portal/redsys/publica/areadeserviciosweb/descargaDeDocumentacionYEjecutables
- *
- * Redsys es titular de todos los derechos de propiedad intelectual e industrial
- * del software.
- *
- * Quedan expresamente prohibidas la reproducción, la distribución y la
- * comunicación pública, incluida su modalidad de puesta a disposición con fines
- * distintos a los descritos en las Condiciones de uso.
- *
- * Redsys se reserva la posibilidad de ejercer las acciones legales que le
- * correspondan para hacer valer sus derechos frente a cualquier infracción de
- * los derechos de propiedad intelectual y/o industrial.
- *
- * Redsys Servicios de Procesamiento, S.L., CIF B85955367
- */
-
 namespace Redsys\Tpv;
 
-class RedsysAPI
+use ArrayAccess;
+use Redsys\Tpv\Exceptions\TpvException;
+use Redsys\Tpv\Utils\Encryption;
+use Redsys\Tpv\Utils\Numbers;
+use Redsys\Tpv\Utils\Signature;
+
+/**
+ * Class RedsysAPI
+ * @package Redsys\Tpv
+ *
+ */
+class RedsysApi implements ArrayAccess
 {
-    /******  Array de DatosEntrada ******/
-    protected $vars_pay = [];
+    const ENV_TEST = 'test';
+    const ENV_LIVE = 'live';
 
-    /******  Set parameter ******/
-    public function setParameter($key, $value)
+    /**
+     * @var string
+     */
+    protected $environment = self::ENV_LIVE;
+
+    /**
+     * @var string
+     */
+    protected $signing_key;
+
+    /**
+     * @var string
+     */
+    protected $signature_ver = Signature::SIGNATURE_VERSION;
+
+    /**
+     * @var string[]
+     */
+    protected $data = [];
+
+    public function __construct(array $data = [])
     {
-        $this->vars_pay[$key] = $value;
+        $this->data = $data ?: [];
     }
 
-    /******  Get parameter *****
+    /**
+     * @param string $signing_key
+     * @return RedsysApi
+     */
+    public function setSigningKey(string $signing_key): RedsysApi
+    {
+        $this->signing_key = $signing_key;
+        return $this;
+    }
+
+    /**
+     * @param string $signature_ver
+     * @return RedsysApi
+     */
+    public function setSigningKeyVer(string $signature_ver): RedsysApi
+    {
+        $this->signature_ver = $signature_ver;
+        return $this;
+    }
+
+    /**
+     * @param string $env
+     * @return RedsysApi
+     */
+    public function setEnvironment(string $env): RedsysApi
+    {
+        $this->environment = $env;
+        return $this;
+    }
+
+    protected function isLiveEnv(): bool
+    {
+        return $this->environment == self::ENV_LIVE;
+    }
+
+    /**
      * @param string $key
-     * @return mixed
+     * @param $value
+     * @return RedsysApi
      */
-    public function getParameter($key)
+    public function setParam(string $key, $value): RedsysApi
     {
-        return $this->vars_pay[$key];
-    }
-
-    //////////////////////////////////////////////////////////////////////////////////////////////
-    //////////////////////////////////////////////////////////////////////////////////////////////
-    ////////////					FUNCIONES AUXILIARES:							  ////////////
-    //////////////////////////////////////////////////////////////////////////////////////////////
-    //////////////////////////////////////////////////////////////////////////////////////////////
-
-    /******  3DES Function  *****
-     * @param $message
-     * @param $key
-     * @return false|string
-     */
-    protected function encrypt_3DES($message, $key)
-    {
-        // Se cifra
-        $l = ceil(strlen($message) / 8) * 8;
-        return substr(openssl_encrypt($message . str_repeat("\0", $l - strlen($message)),
-            'des-ede3-cbc', $key, OPENSSL_RAW_DATA, "\0\0\0\0\0\0\0\0"), 0, $l);
-    }
-
-    /******  Base64 Functions  *****
-     * @param $input
-     * @return string
-     */
-    protected function base64_url_encode($input)
-    {
-        return strtr(base64_encode($input), '+/', '-_');
+        $this->data[$key] = $value;
+        return $this;
     }
 
     /**
-     * @param $data
-     * @return string
+     * @param string $key
+     * @return string|null
      */
-    protected function encodeBase64($data)
+    public function getParam(string $key): ?string
     {
-        return base64_encode($data);
+        return isset($this->data[$key]) ? $this->data[$key] : null;
+    }
+
+    public function setData(array $data): RedsysApi
+    {
+        $this->data = $data;
+        return $this;
+    }
+
+    public function getDataOrder(array $data = null): ?string
+    {
+        $data = $data ?: $this->data;
+
+        return isset($data['order']) ? $data['order'] : null;
+    }
+
+    protected function validateParameters(array $keys, array $target_keys): bool
+    {
+        return count(array_intersect($target_keys, $keys)) == count($keys);
     }
 
     /**
-     * @param $input
-     * @return false|string
+     * @param array $data
+     * @return bool
      */
-    protected function base64_url_decode($input)
+    protected function validateMerchantParameters(array $data): bool
     {
-        return base64_decode(strtr($input, '-_', '+/'));
+        return true;
     }
 
-    protected function decodeBase64($data)
+    protected function prepareMerchantParameters(array $data, array $options): array
     {
-        return base64_decode($data);
-    }
+        $filtered_data = [];
 
-    /******  MAC Function *****
-     * @param $ent
-     * @param $key
-     * @return string
-     */
-    protected function mac256($ent, $key)
-    {
-        return hash_hmac('sha256', $ent, $key, true);//(PHP 5 >= 5.1.2)
-    }
+        $ds_merchant_parameter_prefix = isset($options['ds_merchant_parameter_prefix']) ?
+            $options['ds_merchant_parameter_prefix'] : null;
 
-    //////////////////////////////////////////////////////////////////////////////////////////////
-    //////////////////////////////////////////////////////////////////////////////////////////////
-    ////////////	   FUNCIONES PARA LA GENERACIÓN DEL FORMULARIO DE PAGO:			  ////////////
-    //////////////////////////////////////////////////////////////////////////////////////////////
-    //////////////////////////////////////////////////////////////////////////////////////////////
+        $input_data = $data;
 
-    /******  Obtener Número de pedido ******/
-    public function getOrder()
-    {
-        $numPedido = "";
-        if (empty($this->vars_pay['DS_MERCHANT_ORDER'])) {
-            $numPedido = $this->vars_pay['Ds_Merchant_Order'];
-        } else {
-            $numPedido = $this->vars_pay['DS_MERCHANT_ORDER'];
+        // update the amount to REDSYS format requirements
+        if (isset($input_data[DataParams::AMOUNT])) {
+            $input_data[DataParams::AMOUNT] = Numbers::getRedsysAmount($input_data[DataParams::AMOUNT]);
         }
-        return $numPedido;
-    }
 
-    /******  Convertir Array en Objeto JSON ******/
-    protected function arrayToJson()
-    {
-        return json_encode($this->vars_pay); //(PHP 5 >= 5.2.0)
-    }
-
-    public function createMerchantParameters()
-    {
-        return $this->encodeBase64($this->arrayToJson());
-    }
-
-    /**
-     * @param $key
-     * @return string
-     */
-    public function createMerchantSignature($key)
-    {
-        // Se decodifica la clave Base64
-        $key = $this->decodeBase64($key);
-        // Se genera el parámetro Ds_MerchantParameters
-        $ent = $this->createMerchantParameters();
-        // Se diversifica la clave con el Número de Pedido
-        $key = $this->encrypt_3DES($this->getOrder(), $key);
-        // MAC256 del parámetro Ds_MerchantParameters
-        $res = $this->mac256($ent, $key);
-        // Se codifican los datos Base64
-        return $this->encodeBase64($res);
-    }
-
-    //////////////////////////////////////////////////////////////////////////////////////////////
-    //////////////////////////////////////////////////////////////////////////////////////////////
-    //////////// FUNCIONES PARA LA RECEPCIÓN DE DATOS DE PAGO (Notif, URLOK y URLKO): ////////////
-    //////////////////////////////////////////////////////////////////////////////////////////////
-    //////////////////////////////////////////////////////////////////////////////////////////////
-
-    /******  Obtener Número de pedido ******/
-    public function getOrderNotif()
-    {
-        if (empty($this->vars_pay['Ds_Order'])) {
-            $numPedido = $this->vars_pay['DS_ORDER'];
-        } else {
-            $numPedido = $this->vars_pay['Ds_Order'];
+        foreach ($input_data as $key => $val) {
+            $full_key = strtoupper($ds_merchant_parameter_prefix . $key);
+            $filtered_data[$full_key] = $val;
+            unset($key, $val);
         }
-        return $numPedido;
+
+        return $filtered_data;
     }
 
-    /**
-     * @param $datos
-     * @return false|string
-     */
-    public function getOrderNotifSOAP($datos)
+    public function validateNotification(array $data, array &$decoded_merchant_parameters = [])
     {
-        $posPedidoIni = strrpos($datos, "<Ds_Order>");
-        $tamPedidoIni = strlen("<Ds_Order>");
-        $posPedidoFin = strrpos($datos, "</Ds_Order>");
-        return substr($datos, $posPedidoIni + $tamPedidoIni, $posPedidoFin - ($posPedidoIni + $tamPedidoIni));
-    }
+        $version = isset($data[DataParams::FH_DS_SIGNATURE_VERSION]) ? $data[DataParams::FH_DS_SIGNATURE_VERSION] : null;
+        $merchant_data = isset($data[DataParams::FH_DS_MERCHANT_PARAMETERS]) ? $data[DataParams::FH_DS_MERCHANT_PARAMETERS] :
+            null;
+        $signature = isset($data[DataParams::FH_DS_SIGNATURE]) ? $data[DataParams::FH_DS_SIGNATURE] : null;
 
-    /**
-     * @param $datos
-     * @return false|string
-     */
-    public function getRequestNotifSOAP($datos)
-    {
-        $posReqIni = strrpos($datos, "<Request");
-        $posReqFin = strrpos($datos, "</Request>");
-        $tamReqFin = strlen("</Request>");
-        return substr($datos, $posReqIni, ($posReqFin + $tamReqFin) - $posReqIni);
-    }
-
-    /**
-     * @param $datos
-     * @return false|string
-     */
-    public function getResponseNotifSOAP($datos)
-    {
-        $posReqIni = strrpos($datos, "<Response");
-        $posReqFin = strrpos($datos, "</Response>");
-        $tamReqFin = strlen("</Response>");
-        return substr($datos, $posReqIni, ($posReqFin + $tamReqFin) - $posReqIni);
-    }
-
-    /******  Convertir String en Array *****
-     * @param $datosDecod
-     */
-    protected function stringToArray($datosDecod)
-    {
-        $this->vars_pay = json_decode($datosDecod, true); //(PHP 5 >= 5.2.0)
-    }
-
-    /**
-     * @param $datos
-     * @return false|string
-     */
-    public function decodeMerchantParameters($datos)
-    {
-        // Se decodifican los datos Base64
-        if (!empty($datos)) {
-            $decodec = $this->base64_url_decode($datos);
+        if (!$version || !$merchant_data || !$signature) {
+            throw new TpvException('Invalid notification data', 1);
         }
-        // Los datos decodificados se pasan al array de datos
-        $this->stringToArray($decodec);
-        return $decodec;
+
+        $decoded_merchant_parameters = $this->decodeMerchantParameters($merchant_data);
+
+        if (!$decoded_merchant_parameters || !isset($order[DataParams::ORDER])) {
+            throw new TpvException('Invalid notification data', 2);
+        }
+
+        $signature_to_check = Signature::createMerchantSignature($this->signing_key, $order[DataParams::ORDER], $mp);
+
+        if ($signature_to_check !== $signature) {
+            throw new TpvException('Signature does not match', 3);
+        }
+    }
+
+    protected function decodeMerchantParameters($encoded_merchant_data): array
+    {
+        return (array)base64_decode(json_decode($encoded_merchant_data, true));
     }
 
     /**
-     * @param $key
-     * @param $datos
-     * @return string
+     * @param string $signature
+     * @param string $signature_version
+     * @param array|null $options
+     * @param array|null $merchant_parameters
+     * @return array|string
+     * @throws TpvException
      */
-    public function createMerchantSignatureNotif($key, $datos)
+    public function generateMerchantParameters(string &$signature, string &$signature_version, array $options = null,
+                                               array $merchant_parameters = null)
     {
-        // Se decodifica la clave Base64
-        $key = $this->decodeBase64($key);
-        // Se decodifican los datos Base64
-        $decodec = $this->base64_url_decode($datos);
-        // Los datos decodificados se pasan al array de datos
-        $this->stringToArray($decodec);
-        // Se diversifica la clave con el Número de Pedido
-        $key = $this->encrypt_3DES($this->getOrderNotif(), $key);
-        // MAC256 del parámetro Ds_Parameters que envía Redsys
-        $res = $this->mac256($datos, $key);
-        // Se codifican los datos Base64
-        return $this->base64_url_encode($res);
+        $encode = isset($options['encode']) ? (bool)$options['encode'] : true;
+        $validate = isset($options['validate']) ? (bool)$options['validate'] : true;
+        $ds_merchant_parameter_prefix = isset($options['ds_merchant_parameter_prefix']) ?
+            $options['ds_merchant_parameter_prefix'] : null;
+
+        if (!$this->signing_key) {
+            throw new TpvException('Signing key not set');
+        }
+
+        $data = $this->filterMerchantData($merchant_parameters ?: $this->data);
+
+        if ($validate && !$this->validateMerchantParameters($data)) {
+            throw new TpvException('Merchant parameters cannot be validated');
+        }
+
+        $order = $this->getDataOrder($data);
+
+        if (!$order) {
+            throw new TpvException('Order not set');
+        }
+
+        $data = $this->prepareMerchantParameters($data, [
+            'ds_merchant_parameter_prefix' => $ds_merchant_parameter_prefix,
+        ]);
+
+        $signature = Signature::createMerchantSignature($this->signing_key, $order, $data);
+        $signature_version = $this->signature_ver;
+
+        return $encode ? Encryption::encodeBase64(json_encode($data)) : $data;
     }
 
-    /******  Notificaciones SOAP ENTRADA *****
-     * @param $key
-     * @param $datos
-     * @return string
-     */
-    public function createMerchantSignatureNotifSOAPRequest($key, $datos)
+    protected function filterMerchantData(array $data): array
     {
-        // Se decodifica la clave Base64
-        $key = $this->decodeBase64($key);
-        // Se obtienen los datos del Request
-        $datos = $this->getRequestNotifSOAP($datos);
-        // Se diversifica la clave con el Número de Pedido
-        $key = $this->encrypt_3DES($this->getOrderNotifSOAP($datos), $key);
-        // MAC256 del parámetro Ds_Parameters que envía Redsys
-        $res = $this->mac256($datos, $key);
-        // Se codifican los datos Base64
-        return $this->encodeBase64($res);
+        return array_filter($data, function ($val) {
+            return $val !== null && strlen($val) > 0;
+        });
     }
 
-    /******  Notificaciones SOAP SALIDA *****
-     * @param $key
-     * @param $datos
-     * @param $numPedido
-     * @return string
-     */
-    public function createMerchantSignatureNotifSOAPResponse($key, $datos, $numPedido)
+    public function offsetExists($offset): bool
     {
-        // Se decodifica la clave Base64
-        $key = $this->decodeBase64($key);
-        // Se obtienen los datos del Request
-        $datos = $this->getResponseNotifSOAP($datos);
-        // Se diversifica la clave con el Número de Pedido
-        $key = $this->encrypt_3DES($numPedido, $key);
-        // MAC256 del parámetro Ds_Parameters que envía Redsys
-        $res = $this->mac256($datos, $key);
-        // Se codifican los datos Base64
-        return $this->encodeBase64($res);
+        return isset($this->data[$offset]);
+    }
+
+    public function offsetGet($offset): string
+    {
+        return $this->data[$offset];
+    }
+
+    public function offsetSet($offset, $value)
+    {
+        $this->data[$offset] = $value;
+    }
+
+    public function offsetUnset($offset)
+    {
+        unset($this->data[$offset]);
     }
 }

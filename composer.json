@@ -1,24 +1,27 @@
 {
-    "name": "payin7-payments/redsys-hmac256-api",
-    "keywords": ["tpv", "redsys", "sermepa", "servired"],
-    "description": "Package to connect with Redsys/Sermepa/Servired TPV",
-    "authors": [
-        {
-            "name": "Redsys / Redsys Servicios de Procesamiento S.L. CIF B85955367"
-        },
-        {
-            "name" : "Martin Kovachev",
-            "email" : "miracle@nimasystems.com"
-        }
-    ],
-    "require": {
-        "php": ">=7.1"
-    },
-    "autoload": {
-        "psr-4": {
-            "Redsys\\Tpv\\": "src/Redsys/Tpv/"
-        }
-    },
-    "minimum-stability": "dev",
-    "prefer-stable": true
+  "name": "payin7-payments/redsys-hmac256-api",
+  "keywords": [
+    "tpv",
+    "redsys",
+    "sermepa",
+    "servired"
+  ],
+  "description": "Package to connect with Redsys/Sermepa/Servired TPV",
+  "authors": [
+    {
+      "name": "Martin Kovachev",
+      "email": "miracle@nimasystems.com"
+    }
+  ],
+  "require": {
+    "php": ">=7.1",
+    "php-curl-class/php-curl-class": "^8.6"
+  },
+  "autoload": {
+    "psr-4": {
+      "Redsys\\Tpv\\": "src/Redsys/Tpv/"
+    }
+  },
+  "minimum-stability": "dev",
+  "prefer-stable": true
 }
