@@ -9,7 +9,7 @@ use Redsys\Tpv\Utils\Numbers;
 use Redsys\Tpv\Utils\Signature;
 
 /**
- * Class RedsysAPI
+ * Class RedsysApi
  * @package Redsys\Tpv
  *
  */
