@@ -8,7 +8,6 @@ class DataParams
     const FH_DS_MERCHANT_PARAMETERS = 'Ds_MerchantParameters';
     const FH_DS_SIGNATURE = 'Ds_Signature';
     const FH_DS_SIGNATURE_VERSION = 'Ds_SignatureVersion';
-    const FH_DS_RESPONSE = 'Ds_Response';
 
     const AMOUNT = 'amount';
     const AUTHORISATION_CODE = 'authorisationcode';
@@ -97,6 +96,26 @@ class DataParams
         self::EXCEP_SCA,
         self::TERMINAL,
     ];
+
+    const RESP_P_DATE = 'Ds_Date';
+    const RESP_P_HOUR = 'Ds_Hour';
+    const RESP_P_SECURE_PAYMENT = 'Ds_SecurePayment';
+    const RESP_P_EXPIRY_DATE = 'Ds_ExpiryDate';
+    const RESP_P_MERCHANT_IDENTIFIER = 'Ds_Merchant_Identifier';
+    const RESP_P_CARD_COUNTRY = 'Ds_Card_Country';
+    const RESP_P_AMOUNT = 'Ds_Amount';
+    const RESP_P_CURRENCY = 'Ds_Currency';
+    const RESP_P_ORDER = 'Ds_Order';
+    const RESP_P_MERCHANT_CODE = 'Ds_MerchantCode';
+    const RESP_P_TERMINAL = 'Ds_Terminal';
+    const RESP_P_RESPONSE = 'Ds_Response';
+    const RESP_P_MERCHANT_DATA = 'Ds_MerchantData';
+    const RESP_P_TRANSACTION_TYPE = 'Ds_TransactionType';
+    const RESP_P_CONSUMER_LANGUAGE = 'Ds_ConsumerLanguage';
+    const RESP_P_AUTHORISATION_CODE = 'Ds_AuthorisationCode';
+    const RESP_P_CARD_BRAND = 'Ds_Card_Brand';
+    const RESP_P_MERCHANT_COF_TXN_ID = 'Ds_Merchant_Cof_Txnid';
+    const RESP_P_PROCESSED_PAY_METHOD = 'Ds_ProcessedPayMethod';
 
     const CURRENCY_CODE_EUR = 978;
     const CURRENCY_CODE_USD = 840;
