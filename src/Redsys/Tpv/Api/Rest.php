@@ -1,6 +1,6 @@
 <?php
 
-namespace Redsys\Tpv\API;
+namespace Redsys\Tpv\Api;
 
 use Curl\Curl;
 use Redsys\Tpv\DataParams;
