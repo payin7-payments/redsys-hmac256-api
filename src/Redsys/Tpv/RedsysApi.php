@@ -159,6 +159,8 @@ class RedsysApi implements ArrayAccess
             throw new TpvException('Invalid notification data', 1);
         }
 
+        $signature = strtr($signature, '-_', '+/');
+
         $decoded_merchant_parameters = $this->decodeMerchantParameters($merchant_data);
 
         if (!$decoded_merchant_parameters || !isset($decoded_merchant_parameters[DataParams::RESP_P_ORDER])) {
