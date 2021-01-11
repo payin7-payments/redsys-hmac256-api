@@ -51,6 +51,7 @@ class DataParams
     const DCC = 'dcc';
     const EXCEP_SCA = 'excep_sca';
     const TERMINAL = 'terminal';
+    const PAY_METHODS = 'pay_methods';
 
     public static $KNOWN_MERCHANT_PARAMS = [
         self::AMOUNT,
@@ -95,6 +96,7 @@ class DataParams
         self::DCC,
         self::EXCEP_SCA,
         self::TERMINAL,
+        self::PAY_METHODS,
     ];
 
     const RESP_P_DATE = 'Ds_Date';
@@ -117,6 +119,8 @@ class DataParams
     const RESP_P_CARD_BRAND = 'Ds_Card_Brand';
     const RESP_P_MERCHANT_COF_TXN_ID = 'Ds_Merchant_Cof_Txnid';
     const RESP_P_PROCESSED_PAY_METHOD = 'Ds_ProcessedPayMethod';
+
+    const PAY_METHOD_BIZUM = 'Z';
 
     const CARD_TYPE_DEBIT = 'D';
     const CARD_TYPE_CREDIT = 'C';
