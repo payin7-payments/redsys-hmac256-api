@@ -38,6 +38,10 @@ class RedsysApi implements ArrayAccess
      */
     protected $data = [];
 
+    protected $supported_signature_versions = [
+        Signature::SIGNATURE_VERSION,
+    ];
+
     public function __construct(array $data = [])
     {
         $this->data = $data ?: [];
@@ -148,6 +152,13 @@ class RedsysApi implements ArrayAccess
         return $filtered_data;
     }
 
+    protected function validateSignatureVersion($version)
+    {
+        if (!in_array($version, $this->supported_signature_versions)) {
+            throw new TpvException('Unsupported signature');
+        }
+    }
+
     public function validateNotification(array $data, array &$decoded_merchant_parameters = [])
     {
         $version = isset($data[DataParams::FH_DS_SIGNATURE_VERSION]) ? $data[DataParams::FH_DS_SIGNATURE_VERSION] : null;
@@ -159,9 +170,11 @@ class RedsysApi implements ArrayAccess
             throw new TpvException('Invalid notification data', 1);
         }
 
+        $this->validateSignatureVersion($version);
+
         $signature = strtr($signature, '-_', '+/');
 
-        $decoded_merchant_parameters = $this->decodeMerchantParameters($merchant_data);
+        $decoded_merchant_parameters = $this->decodeMerchantParameters($merchant_data, true);
 
         if (!$decoded_merchant_parameters || !isset($decoded_merchant_parameters[DataParams::RESP_P_ORDER])) {
             throw new TpvException('Invalid notification data', 2);
@@ -176,9 +189,14 @@ class RedsysApi implements ArrayAccess
         }
     }
 
-    protected function decodeMerchantParameters($encoded_merchant_data): array
+    /**
+     * @param $encoded_merchant_data
+     * @param false $associative
+     * @return array|object
+     */
+    protected function decodeMerchantParameters($encoded_merchant_data, $associative = false)
     {
-        return (array)json_decode(base64_decode($encoded_merchant_data, true));
+        return json_decode(base64_decode($encoded_merchant_data, true), $associative);
     }
 
     /**
@@ -194,6 +212,7 @@ class RedsysApi implements ArrayAccess
     {
         $encode = isset($options['encode']) ? (bool)$options['encode'] : true;
         $validate = isset($options['validate']) ? (bool)$options['validate'] : true;
+        $apply_filter = isset($options['filter']) && (bool)$options['filter'];
         $ds_merchant_parameter_prefix = isset($options['ds_merchant_parameter_prefix']) ?
             $options['ds_merchant_parameter_prefix'] : null;
 
@@ -201,7 +220,11 @@ class RedsysApi implements ArrayAccess
             throw new TpvException('Signing key not set');
         }
 
-        $data = $this->filterMerchantData($merchant_parameters ?: $this->data);
+        $data = $merchant_parameters ?: $this->data;
+
+        if ($apply_filter) {
+            $data = $this->filterMerchantData($data);
+        }
 
         if ($validate && !$this->validateMerchantParameters($data)) {
             throw new TpvException('Merchant parameters cannot be validated');

@@ -8,6 +8,8 @@ class DataParams
     const FH_DS_MERCHANT_PARAMETERS = 'Ds_MerchantParameters';
     const FH_DS_SIGNATURE = 'Ds_Signature';
     const FH_DS_SIGNATURE_VERSION = 'Ds_SignatureVersion';
+    const FH_DS_EMV3DS = 'Ds_EMV3DS';
+    const FH_DS_ERROR_CODE = 'errorCode';
 
     const AMOUNT = 'amount';
     const AUTHORISATION_CODE = 'authorisationcode';
