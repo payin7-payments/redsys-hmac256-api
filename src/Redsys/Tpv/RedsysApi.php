@@ -102,6 +102,14 @@ class RedsysApi implements ArrayAccess
         return isset($this->data[$key]) ? $this->data[$key] : null;
     }
 
+    /**
+     * @return string[]
+     */
+    public function getData(): array
+    {
+        return $this->data;
+    }
+
     public function setData(array $data): RedsysApi
     {
         $this->data = $data;
