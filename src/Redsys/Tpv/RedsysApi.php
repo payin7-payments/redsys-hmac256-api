@@ -161,11 +161,13 @@ class RedsysApi implements ArrayAccess
 
         $decoded_merchant_parameters = $this->decodeMerchantParameters($merchant_data);
 
-        if (!$decoded_merchant_parameters || !isset($order[DataParams::ORDER])) {
+        if (!$decoded_merchant_parameters || !isset($decoded_merchant_parameters[DataParams::RESP_P_ORDER])) {
             throw new TpvException('Invalid notification data', 2);
         }
 
-        $signature_to_check = Signature::createMerchantSignature($this->signing_key, $order[DataParams::ORDER], $mp);
+        $signature_to_check =
+            Signature::createMerchantSignature($this->signing_key,
+                $decoded_merchant_parameters[DataParams::RESP_P_ORDER], $decoded_merchant_parameters);
 
         if ($signature_to_check !== $signature) {
             throw new TpvException('Signature does not match', 3);
@@ -174,7 +176,7 @@ class RedsysApi implements ArrayAccess
 
     protected function decodeMerchantParameters($encoded_merchant_data): array
     {
-        return (array)base64_decode(json_decode($encoded_merchant_data, true));
+        return (array)json_decode(base64_decode($encoded_merchant_data, true));
     }
 
     /**

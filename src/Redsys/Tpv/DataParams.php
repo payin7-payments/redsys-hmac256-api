@@ -103,6 +103,7 @@ class DataParams
     const RESP_P_EXPIRY_DATE = 'Ds_ExpiryDate';
     const RESP_P_MERCHANT_IDENTIFIER = 'Ds_Merchant_Identifier';
     const RESP_P_CARD_COUNTRY = 'Ds_Card_Country';
+    const RESP_P_CARD_TYPE = 'Ds_Card_Type';
     const RESP_P_AMOUNT = 'Ds_Amount';
     const RESP_P_CURRENCY = 'Ds_Currency';
     const RESP_P_ORDER = 'Ds_Order';
@@ -116,6 +117,9 @@ class DataParams
     const RESP_P_CARD_BRAND = 'Ds_Card_Brand';
     const RESP_P_MERCHANT_COF_TXN_ID = 'Ds_Merchant_Cof_Txnid';
     const RESP_P_PROCESSED_PAY_METHOD = 'Ds_ProcessedPayMethod';
+
+    const CARD_TYPE_DEBIT = 'D';
+    const CARD_TYPE_CREDIT = 'C';
 
     const CURRENCY_CODE_EUR = 978;
     const CURRENCY_CODE_USD = 840;
