@@ -1,5 +1,12 @@
 <?php
 
+/**
+ * @author     Martin Kovachev (miracle@nimasystems.com)
+ * @copyright  Payin7 S.L.
+ * @license    MIT
+ * @datetime   2021-01-13
+ */
+
 require_once('./vendor/autoload.php');
 
 $config = require_once('../config.php');

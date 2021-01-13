@@ -1,5 +1,12 @@
 <?php
 
+/**
+ * @author     Martin Kovachev (miracle@nimasystems.com)
+ * @copyright  Payin7 S.L.
+ * @license    MIT
+ * @datetime   2021-01-13
+ */
+
 namespace Redsys\Tpv;
 
 use ArrayAccess;
@@ -220,7 +227,7 @@ class RedsysApi implements ArrayAccess
     {
         $encode = isset($options['encode']) ? (bool)$options['encode'] : true;
         $validate = isset($options['validate']) ? (bool)$options['validate'] : true;
-        $apply_filter = isset($options['filter']) && (bool)$options['filter'];
+        $apply_filter = isset($options['filter']) ? (bool)$options['filter'] : true;
         $ds_merchant_parameter_prefix = isset($options['ds_merchant_parameter_prefix']) ?
             $options['ds_merchant_parameter_prefix'] : null;
 

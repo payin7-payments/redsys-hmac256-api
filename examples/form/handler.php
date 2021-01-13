@@ -2,6 +2,13 @@
 <body>
 <?php
 
+/**
+ * @author     Martin Kovachev (miracle@nimasystems.com)
+ * @copyright  Payin7 S.L.
+ * @license    MIT
+ * @datetime   2021-01-13
+ */
+
 use Redsys\Tpv\DataParams;
 use Redsys\Tpv\RedsysApi;
 
