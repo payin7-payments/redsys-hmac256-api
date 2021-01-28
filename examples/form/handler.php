@@ -9,15 +9,15 @@
  * @datetime   2021-01-13
  */
 
+use Redsys\Tpv\Api\Rest;
 use Redsys\Tpv\DataParams;
-use Redsys\Tpv\RedsysApi;
 
 require_once('./vendor/autoload.php');
 
 $config = require_once('../config.php');
 
 // setup
-$tpv = new RedsysApi();
+$tpv = new Rest();
 $tpv->setSigningKey($config['signing_key'])
     ->setSigningKeyVer($config['signing_key_ver'])
     ->setData($config['merchant_params']);

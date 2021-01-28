@@ -62,6 +62,11 @@ class DataParams
     const TERMINAL = 'terminal';
     const PAY_METHODS = 'pay_methods';
 
+    public static function getPrefixedDataParam($key, $prefix = self::FH_DS_MERCHANT_PARAMETER_PREFIX): string
+    {
+        return strtoupper($prefix . $key);
+    }
+
     public static $KNOWN_MERCHANT_PARAMS = [
         self::AMOUNT,
         self::AUTHORISATION_CODE,

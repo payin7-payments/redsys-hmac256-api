@@ -15,6 +15,7 @@ use Redsys\Tpv\Exceptions\SermepaResponseException;
 use Redsys\Tpv\Exceptions\TpvException;
 use Redsys\Tpv\RedsysApi;
 use Redsys\Tpv\StatusCodes;
+use Redsys\Tpv\Utils\Signature;
 
 /**
  * Class Rest
@@ -34,6 +35,11 @@ class Rest extends RedsysApi
         self::SERVICE_TRATA => '/trataPeticionREST',
     ];
 
+    /**
+     * @var string
+     */
+    protected string $service;
+
     public static $REQUIRED_MERCHANT_PARAMS = [
         DataParams::AMOUNT,
         DataParams::CURRENCY,
@@ -44,6 +50,44 @@ class Rest extends RedsysApi
     ];
 
     protected $user_agent = 'RedsysAPI';
+
+    public function createMerchantParameterSignature(array $data, string &$signature_version): string
+    {
+        $signature_version = $this->signature_ver;
+
+        $order_key = DataParams::getPrefixedDataParam(DataParams::ORDER);
+        $order = isset($data[$order_key]) ? $data[$order_key] : null;
+
+        if (!$order) {
+            throw new TpvException('Order not set');
+        }
+
+        if ($this->service == self::SERVICE_INICIA) {
+            return Signature::createMerchantFormSignature($this->signing_key, $order, $data);
+        } else if ($this->service == self::SERVICE_TRATA) {
+            return Signature::createMerchantFormSignature($this->signing_key, $order, $data);
+        } else {
+            throw new TpvException('Unsupported service');
+        }
+    }
+
+    /**
+     * @return string
+     */
+    public function getService(): string
+    {
+        return $this->service;
+    }
+
+    /**
+     * @param string $service
+     * @return Rest
+     */
+    public function setService(string $service): Rest
+    {
+        $this->service = $service;
+        return $this;
+    }
 
     protected function getUrl(): string
     {
@@ -62,27 +106,16 @@ class Rest extends RedsysApi
     }
 
     /**
-     * @param array $request_data
+     * @param mixed $request
+     * @param mixed $response
      * @param Curl|null $curl
      * @return object
      * @throws SermepaResponseException
      * @throws TpvException
      */
-    public function postInitiaPeticion(array &$request_data = [], Curl &$curl = null): object
+    public function execute(&$request, &$response, Curl &$curl = null): object
     {
-        return $this->postServiceData(self::SERVICE_INICIA, $request_data, $curl);
-    }
-
-    /**
-     * @param array $request_data
-     * @param Curl|null $curl
-     * @return object
-     * @throws SermepaResponseException
-     * @throws TpvException
-     */
-    public function postTrataPeticion(array &$request_data = [], Curl &$curl = null): object
-    {
-        return $this->postServiceData(self::SERVICE_TRATA, $request_data, $curl);
+        return $this->postServiceData($request, $response, $curl);
     }
 
     protected function filterRequestData(array &$data)
@@ -91,19 +124,23 @@ class Rest extends RedsysApi
     }
 
     /**
-     * @param $service
-     * @param array $request_data
+     * @param mixed $request
+     * @param mixed $response
      * @param Curl|null $curl
      * @return object
      * @throws SermepaResponseException
      * @throws TpvException
      */
-    public function postServiceData($service, array &$request_data, Curl &$curl = null): object
+    public function postServiceData(&$request, &$response, Curl &$curl = null): object
     {
+        if (!$this->service) {
+            throw new TpvException('Service not set');
+        }
+
         $signature = '';
         $signature_version = '';
         $merchant_parameters = $this->generateMerchantParameters($signature, $signature_version, [
-            'ds_merchant_parameter_prefix' => DataParams::FH_DS_MERCHANT_PARAMETER_PREFIX,
+            'filter' => false,
         ]);
 
         $request_data = [
@@ -115,22 +152,26 @@ class Rest extends RedsysApi
         $this->filterRequestData($request_data);
 
         $curl = null;
-        return $this->post($service, $request_data, $curl);
+        return $this->post($this->service, $request_data, $request, $response, $curl);
     }
 
     /**
      * @param $service
      * @param array $data
+     * @param mixed $request
+     * @param mixed $response
      * @param Curl|null $curl
      * @return object
      * @throws SermepaResponseException
      * @throws TpvException
      */
-    protected function post($service, array $data, Curl &$curl = null): object
+    protected function post($service, array $data, &$request, &$response, Curl &$curl = null): object
     {
+        $request = json_encode($data);
+
         $curl = $this->getCurlInstance();
         $url = $this->getServiceUrl($service);
-        $response = $curl->post($url, json_encode($data));
+        $response = $curl->post($url, $request);
 
         $response_code = $curl->getHttpStatusCode();
 
@@ -156,6 +197,31 @@ class Rest extends RedsysApi
         $this->validateNotification((array)$response);
 
         return $this->decodeMerchantParameters($response->Ds_MerchantParameters);
+    }
+
+    public function validateNotification(array $data, array &$decoded_merchant_parameters = [])
+    {
+        $version = isset($data[DataParams::FH_DS_SIGNATURE_VERSION]) ? $data[DataParams::FH_DS_SIGNATURE_VERSION] : null;
+        $merchant_data = isset($data[DataParams::FH_DS_MERCHANT_PARAMETERS]) ? $data[DataParams::FH_DS_MERCHANT_PARAMETERS] :
+            null;
+        $signature = isset($data[DataParams::FH_DS_SIGNATURE]) ? $data[DataParams::FH_DS_SIGNATURE] : null;
+
+        if (!$version || !$merchant_data || !$signature) {
+            throw new TpvException('Invalid notification data', 1);
+        }
+
+        $this->validateSignatureVersion($version);
+
+        $signature = strtr($signature, '-_', '+/');
+
+        $decoded_merchant_parameters = $this->decodeMerchantParameters($merchant_data, true);
+
+//        $signature_to_check =
+//            Signature::createMerchantSignature($this->signing_key, $decoded_merchant_parameters);
+//
+//        if ($signature_to_check !== $signature) {
+//            throw new TpvException('Signature does not match', 3);
+//        }
     }
 
     protected function getCurlInstance(): Curl

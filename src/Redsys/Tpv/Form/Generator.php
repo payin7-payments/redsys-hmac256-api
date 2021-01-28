@@ -10,7 +10,9 @@
 namespace Redsys\Tpv\Form;
 
 use Redsys\Tpv\DataParams;
+use Redsys\Tpv\Exceptions\TpvException;
 use Redsys\Tpv\RedsysApi;
+use Redsys\Tpv\Utils\Signature;
 
 /**
  * Class Generator
@@ -89,6 +91,19 @@ class Generator extends RedsysApi
         return $this->validateParameters(self::$REQUIRED_MERCHANT_PARAMS, array_keys($data));
     }
 
+    public function createMerchantParameterSignature(array $data, string &$signature_version): string
+    {
+        $order_key = DataParams::getPrefixedDataParam(DataParams::ORDER);
+        $order = isset($data[$order_key]) ? $data[$order_key] : null;
+
+        if (!$order) {
+            throw new TpvException('Order not set');
+        }
+
+        $signature_version = $this->signature_ver;
+        return Signature::createMerchantFormSignature($this->signing_key, $order, $data);
+    }
+
     /**
      * @return array
      */
@@ -142,9 +157,7 @@ class Generator extends RedsysApi
     {
         $signature = '';
         $signature_version = '';
-        $merchant_parameters = $this->generateMerchantParameters($signature, $signature_version, [
-            'ds_merchant_parameter_prefix' => DataParams::FH_DS_MERCHANT_PARAMETER_PREFIX,
-        ]);
+        $merchant_parameters = $this->generateMerchantParameters($signature, $signature_version);
 
         $body = implode('', [
             $this->buildHiddenInput(DataParams::FH_DS_MERCHANT_PARAMETERS, $merchant_parameters),

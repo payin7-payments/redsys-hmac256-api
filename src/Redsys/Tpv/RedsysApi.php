@@ -20,7 +20,7 @@ use Redsys\Tpv\Utils\Signature;
  * @package Redsys\Tpv
  *
  */
-class RedsysApi implements ArrayAccess
+abstract class RedsysApi implements ArrayAccess
 {
     const ENV_TEST = 'test';
     const ENV_LIVE = 'live';
@@ -63,6 +63,8 @@ class RedsysApi implements ArrayAccess
         $this->signing_key = $signing_key;
         return $this;
     }
+
+    abstract public function createMerchantParameterSignature(array $data, string &$signature_version): string;
 
     /**
      * @param string $signature_ver
@@ -123,13 +125,6 @@ class RedsysApi implements ArrayAccess
         return $this;
     }
 
-    public function getDataOrder(array $data = null): ?string
-    {
-        $data = $data ?: $this->data;
-
-        return isset($data['order']) ? $data['order'] : null;
-    }
-
     protected function validateParameters(array $keys, array $target_keys): bool
     {
         return count(array_intersect($target_keys, $keys)) == count($keys);
@@ -159,7 +154,7 @@ class RedsysApi implements ArrayAccess
         }
 
         foreach ($input_data as $key => $val) {
-            $full_key = strtoupper($ds_merchant_parameter_prefix . $key);
+            $full_key = DataParams::getPrefixedDataParam($key, $ds_merchant_parameter_prefix);
             $filtered_data[$full_key] = $val;
             unset($key, $val);
         }
@@ -171,36 +166,6 @@ class RedsysApi implements ArrayAccess
     {
         if (!in_array($version, $this->supported_signature_versions)) {
             throw new TpvException('Unsupported signature');
-        }
-    }
-
-    public function validateNotification(array $data, array &$decoded_merchant_parameters = [])
-    {
-        $version = isset($data[DataParams::FH_DS_SIGNATURE_VERSION]) ? $data[DataParams::FH_DS_SIGNATURE_VERSION] : null;
-        $merchant_data = isset($data[DataParams::FH_DS_MERCHANT_PARAMETERS]) ? $data[DataParams::FH_DS_MERCHANT_PARAMETERS] :
-            null;
-        $signature = isset($data[DataParams::FH_DS_SIGNATURE]) ? $data[DataParams::FH_DS_SIGNATURE] : null;
-
-        if (!$version || !$merchant_data || !$signature) {
-            throw new TpvException('Invalid notification data', 1);
-        }
-
-        $this->validateSignatureVersion($version);
-
-        $signature = strtr($signature, '-_', '+/');
-
-        $decoded_merchant_parameters = $this->decodeMerchantParameters($merchant_data, true);
-
-        if (!$decoded_merchant_parameters || !isset($decoded_merchant_parameters[DataParams::RESP_P_ORDER])) {
-            throw new TpvException('Invalid notification data', 2);
-        }
-
-        $signature_to_check =
-            Signature::createMerchantSignature($this->signing_key,
-                $decoded_merchant_parameters[DataParams::RESP_P_ORDER], $decoded_merchant_parameters);
-
-        if ($signature_to_check !== $signature) {
-            throw new TpvException('Signature does not match', 3);
         }
     }
 
@@ -228,8 +193,8 @@ class RedsysApi implements ArrayAccess
         $encode = isset($options['encode']) ? (bool)$options['encode'] : true;
         $validate = isset($options['validate']) ? (bool)$options['validate'] : true;
         $apply_filter = isset($options['filter']) ? (bool)$options['filter'] : true;
-        $ds_merchant_parameter_prefix = isset($options['ds_merchant_parameter_prefix']) ?
-            $options['ds_merchant_parameter_prefix'] : null;
+//        $ds_merchant_parameter_prefix = isset($options['ds_merchant_parameter_prefix']) ?
+//            $options['ds_merchant_parameter_prefix'] : DataParams::FH_DS_MERCHANT_PARAMETER_PREFIX;
 
         if (!$this->signing_key) {
             throw new TpvException('Signing key not set');
@@ -245,19 +210,11 @@ class RedsysApi implements ArrayAccess
             throw new TpvException('Merchant parameters cannot be validated');
         }
 
-        $order = $this->getDataOrder($data);
-
-        if (!$order) {
-            throw new TpvException('Order not set');
-        }
-
         $data = $this->prepareMerchantParameters($data, [
-            'ds_merchant_parameter_prefix' => $ds_merchant_parameter_prefix,
+            'ds_merchant_parameter_prefix' => DataParams::FH_DS_MERCHANT_PARAMETER_PREFIX,
         ]);
 
-        $signature = Signature::createMerchantSignature($this->signing_key, $order, $data);
-        $signature_version = $this->signature_ver;
-
+        $signature = $this->createMerchantParameterSignature($data, $signature_version);
         return $encode ? Encryption::encodeBase64(json_encode($data)) : $data;
     }
 

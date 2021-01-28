@@ -10,8 +10,8 @@
 use Redsys\Tpv\DataParams;
 
 return [
-    'signing_key_ver' => 'HMAC_SHA256_V1',
     'signing_key' => 'sq7HjrUOBfKmC576ILgskD5srU870gJ7',
+    'signing_key_ver' => 'HMAC_SHA256_V1',
     'merchant_params' => [
         DataParams::AMOUNT => 1.23,
         DataParams::ORDER => time(),
