@@ -113,7 +113,7 @@ class Rest extends RedsysApi
      * @throws SermepaResponseException
      * @throws TpvException
      */
-    public function execute(&$request, &$response, Curl &$curl = null): object
+    public function execute(&$request, &$response, Curl &$curl = null): ?object
     {
         return $this->postServiceData($request, $response, $curl);
     }
@@ -131,7 +131,7 @@ class Rest extends RedsysApi
      * @throws SermepaResponseException
      * @throws TpvException
      */
-    public function postServiceData(&$request, &$response, Curl &$curl = null): object
+    public function postServiceData(&$request, &$response, Curl &$curl = null): ?object
     {
         if (!$this->service) {
             throw new TpvException('Service not set');
@@ -165,7 +165,7 @@ class Rest extends RedsysApi
      * @throws SermepaResponseException
      * @throws TpvException
      */
-    protected function post($service, array $data, &$request, &$response, Curl &$curl = null): object
+    protected function post($service, array $data, &$request, &$response, Curl &$curl = null): ?object
     {
         $request = json_encode($data);
 
