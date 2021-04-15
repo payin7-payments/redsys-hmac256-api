@@ -176,7 +176,7 @@ abstract class RedsysApi implements ArrayAccess
      */
     protected function decodeMerchantParameters($encoded_merchant_data, $associative = false)
     {
-        return json_decode(base64_decode($encoded_merchant_data, true), $associative);
+        return json_decode(Encryption::base64UrlDecode($encoded_merchant_data, true), $associative);
     }
 
     /**
